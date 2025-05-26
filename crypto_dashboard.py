@@ -103,7 +103,8 @@ while True:
         st.subheader("Binance Top Gainers with Technical Signals")
         binance_df = get_binance_top_gainers()
         signals, caps, dates = [], [], []
-
+    
+    if not binance_df.empty and 'symbol' in binance_df.columns:
         for symbol in binance_df['symbol']:
             signal = analyze_technical_signals(symbol)
             coingecko_symbol = symbol.replace('USDT','').lower()
@@ -111,7 +112,9 @@ while True:
             signals.append(signal)
             caps.append(cap)
             dates.append(date)
-
+    else:
+        st.warning("⚠️ Binance data not available or malformed.")
+        
         binance_df['Signal'] = signals
         binance_df['Market Cap (USD)'] = caps
         binance_df['Token Age'] = dates
