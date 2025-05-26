@@ -6,16 +6,22 @@ import time
 from ta.momentum import RSIIndicator
 from ta.trend import EMAIndicator
 
-# === Utility Functions ===
-def get_binance_top_gainers():
+# === Utility Functions ===def get_binance_top_gainers():
     url = "https://api.binance.com/api/v3/ticker/24hr"
-    res = requests.get(url).json()
-    df = pd.DataFrame(res)
-    df['priceChangePercent'] = df['priceChangePercent'].astype(float)
-    df['volume'] = df['quoteVolume'].astype(float)
-    top = df.sort_values(by='priceChangePercent', ascending=False)
-    top = top[['symbol', 'priceChangePercent', 'volume']]
-    return top.head(20)
+    try:
+        res = requests.get(url).json()
+        if not isinstance(res, list):
+            st.error("Binance API did not return expected data.")
+            return pd.DataFrame()
+        df = pd.DataFrame(res)
+        df['priceChangePercent'] = df['priceChangePercent'].astype(float)
+        df['volume'] = df['quoteVolume'].astype(float)
+        top = df.sort_values(by='priceChangePercent', ascending=False)
+        return top[['symbol', 'priceChangePercent', 'volume']].head(20)
+    except Exception as e:
+        st.error(f\"Failed to fetch Binance data: {e}\")
+        return pd.DataFrame()
+
 
 def get_klines(symbol, interval='1h', limit=200):
     url = f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval={interval}&limit={limit}"
