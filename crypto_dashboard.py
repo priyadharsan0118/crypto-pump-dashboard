@@ -6,7 +6,8 @@ import time
 from ta.momentum import RSIIndicator
 from ta.trend import EMAIndicator
 
-# === Utility Functions ===def get_binance_top_gainers():def get_binance_top_gainers():
+# === Utility Functions ===def get_binance_top_gainers():
+def get_binance_top_gainers():
     import streamlit as st
     import requests
     import pandas as pd
