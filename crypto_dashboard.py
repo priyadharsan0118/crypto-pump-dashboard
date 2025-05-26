@@ -8,7 +8,7 @@ import time
 st.set_page_config(page_title="Crypto Pump Detector", layout="wide")
 st.title("ðŸš€ Live Crypto Pump Detector (Top Gainers with Signals)")
 
-@st.cache_data(ttl=120)
+@st.cache_data(ttl=180)
 def get_top_gainers():
     url = "https://api.coingecko.com/api/v3/coins/markets"
     params = {
@@ -33,26 +33,27 @@ def get_top_gainers():
             'current_price': 'Current Price'
         }, inplace=True)
         return df
-    except requests.exceptions.RequestException as e:
-        st.error(f"Error fetching data from CoinGecko: {e}")
+    except Exception as e:
+        st.error(f"Error fetching top gainers: {e}")
         return pd.DataFrame()
 
 def get_price_history(coin_id):
-    url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart"
-    params = {
-        'vs_currency': 'usd',
-        'days': '1',
-        'interval': 'hourly'
-    }
     try:
-        res = requests.get(url, params=params, timeout=10).json()
-        if 'prices' not in res:
+        url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart"
+        params = {
+            'vs_currency': 'usd',
+            'days': '1',
+            'interval': 'hourly'
+        }
+        response = requests.get(url, params=params, timeout=10)
+        data = response.json()
+        if 'prices' not in data:
             return pd.DataFrame()
-        prices = res['prices']
+        prices = data['prices']
         df = pd.DataFrame(prices, columns=['timestamp', 'price'])
         df['time'] = pd.to_datetime(df['timestamp'], unit='ms')
         return df
-    except Exception:
+    except Exception as e:
         return pd.DataFrame()
 
 def generate_signal(df):
@@ -77,21 +78,21 @@ if not top_df.empty:
 
     for _, row in top_df.iterrows():
         with st.expander(f"{row['Name']} ({row['Symbol'].upper()}) - ${row['Current Price']:.2f}"):
-            price_df = get_price_history(row['ID'])
+            st.write("Fetching price history...")
+            df = get_price_history(row['ID'])
+            time.sleep(1.5)  # avoid hitting rate limits
 
-            if not price_df.empty:
-                signal = generate_signal(price_df)
-                st.write(f"Signal: **{signal}**")
-
+            if not df.empty:
+                signal = generate_signal(df)
+                st.markdown(f"### Signal: **{signal}**")
                 fig, ax = plt.subplots()
-                ax.plot(price_df['time'], price_df['price'], label='Price')
+                ax.plot(df['time'], df['price'], label='Price')
                 ax.set_title(f"{row['Name']} - Last 24h")
                 ax.set_xlabel("Time")
                 ax.set_ylabel("USD")
                 ax.legend()
                 st.pyplot(fig)
             else:
-                st.warning("Could not load price history.")
-            time.sleep(1)
+                st.warning("âš ï¸ Could not load price history for this token.")
 else:
-    st.warning("âš ï¸ No data available.")
+    st.warning("âš ï¸ No gainers data loaded.")
