@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import time
 
 st.set_page_config(page_title="Crypto Pump Detector", layout="wide")
-st.title("🚀 Live Crypto Pump Detector (with Buy/Sell Signals)")
+st.title("ðŸš€ Live Crypto Pump Detector (Top Gainers with Signals)")
 
 @st.cache_data(ttl=120)
 def get_top_gainers():
@@ -46,49 +46,52 @@ def get_price_history(coin_id):
     }
     try:
         res = requests.get(url, params=params, timeout=10).json()
+        if 'prices' not in res:
+            return pd.DataFrame()
         prices = res['prices']
         df = pd.DataFrame(prices, columns=['timestamp', 'price'])
         df['time'] = pd.to_datetime(df['timestamp'], unit='ms')
         return df
-    except Exception as e:
-        st.warning(f"Could not load price history for {coin_id}: {e}")
+    except Exception:
         return pd.DataFrame()
 
 def generate_signal(df):
-    if len(df) < 2:
-        return "⚠️ No Signal"
+    if len(df) < 4:
+        return "âš ï¸ No Signal"
     recent = df['price'].iloc[-1]
-    previous = df['price'].iloc[-2]
-    change_pct = ((recent - previous) / previous) * 100
-    if change_pct > 2.0:
-        return "🟢 Buy Signal"
-    elif change_pct < -2.0:
-        return "🔴 Sell Signal"
+    avg_recent = df['price'].iloc[-3:].mean()
+    avg_early = df['price'].iloc[:3].mean()
+    change_pct = ((avg_recent - avg_early) / avg_early) * 100
+    if change_pct > 3:
+        return "ðŸŸ¢ Buy Signal (Pump)"
+    elif change_pct < -3:
+        return "ðŸ”´ Sell Signal (Dump)"
     else:
-        return "⚪ Hold"
+        return "âšª Hold"
 
 top_df = get_top_gainers()
-st.subheader("📈 Top 10 Gainers (24h)")
+st.subheader("ðŸ“ˆ Top 10 Gainers (24h)")
 
 if not top_df.empty:
     st.dataframe(top_df)
 
-    for index, row in top_df.iterrows():
-        st.markdown(f"---")
-        st.subheader(f"{row['Name']} ({row['Symbol'].upper()})")
-        price_df = get_price_history(row['ID'])
+    for _, row in top_df.iterrows():
+        with st.expander(f"{row['Name']} ({row['Symbol'].upper()}) - ${row['Current Price']:.2f}"):
+            price_df = get_price_history(row['ID'])
 
-        if not price_df.empty:
-            signal = generate_signal(price_df)
-            st.write(f"Signal: **{signal}**")
+            if not price_df.empty:
+                signal = generate_signal(price_df)
+                st.write(f"Signal: **{signal}**")
 
-            fig, ax = plt.subplots()
-            ax.plot(price_df['time'], price_df['price'], label='Price')
-            ax.set_title(f"{row['Name']} - Last 24h")
-            ax.set_xlabel("Time")
-            ax.set_ylabel("USD")
-            ax.legend()
-            st.pyplot(fig)
-        time.sleep(1)
+                fig, ax = plt.subplots()
+                ax.plot(price_df['time'], price_df['price'], label='Price')
+                ax.set_title(f"{row['Name']} - Last 24h")
+                ax.set_xlabel("Time")
+                ax.set_ylabel("USD")
+                ax.legend()
+                st.pyplot(fig)
+            else:
+                st.warning("Could not load price history.")
+            time.sleep(1)
 else:
-    st.warning("⚠️ No data available.")
+    st.warning("âš ï¸ No data available.")
